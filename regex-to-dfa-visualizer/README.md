@@ -1,8 +1,10 @@
-# Regex → NFA → DFA → minimal DFA: comparing Moore, Hopcroft and Brzozowski
+# Regex to Minimal DFA Visualizer
 
-Bachelor thesis software. It converts regular expressions through the standard pipeline
-and measures how much time, work and intermediate state the three classic DFA
-minimization algorithms need to reach the (unique) minimal DFA.
+This repository contains the source code and experimental benchmark for the paper:
+
+**"Minimizing Automata Obtained from Regular Expressions: An Experimental Comparison of the Algorithms of Moore, Hopcroft and Brzozowski with State Complexity Analysis"**
+
+It converts regular expressions through the standard pipeline and measures how much time, work and intermediate state the three classic DFA minimization algorithms need to reach the (unique) minimal DFA.
 
 ## Setup
 
