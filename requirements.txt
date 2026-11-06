@@ -1,0 +1,4 @@
+# Python 3.12 or newer is required (the code uses `class DFA[STATE]` generic syntax).
+pandas>=2.0
+matplotlib>=3.8
+pytest>=8.0

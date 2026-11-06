@@ -1,0 +1,670 @@
+<!DOCTYPE html>
+<html lang="sq">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Vizualizuesi i automateve</title>
+<style>
+@font-face { font-family: "IBM Plex Sans"; font-weight: 400; src: url(vendor/fonts/ibm-plex-sans-latin-400-normal.woff2) format("woff2"); }
+@font-face { font-family: "IBM Plex Sans"; font-weight: 500; src: url(vendor/fonts/ibm-plex-sans-latin-500-normal.woff2) format("woff2"); }
+@font-face { font-family: "IBM Plex Sans"; font-weight: 600; src: url(vendor/fonts/ibm-plex-sans-latin-600-normal.woff2) format("woff2"); }
+@font-face { font-family: "IBM Plex Sans"; font-weight: 400; src: url(vendor/fonts/ibm-plex-sans-latin-ext-400-normal.woff2) format("woff2"); unicode-range: U+0100-024F; }
+@font-face { font-family: "IBM Plex Sans"; font-weight: 600; src: url(vendor/fonts/ibm-plex-sans-latin-ext-600-normal.woff2) format("woff2"); unicode-range: U+0100-024F; }
+@font-face { font-family: "IBM Plex Mono"; font-weight: 400; src: url(vendor/fonts/ibm-plex-mono-latin-400-normal.woff2) format("woff2"); }
+@font-face { font-family: "IBM Plex Mono"; font-weight: 500; src: url(vendor/fonts/ibm-plex-mono-latin-500-normal.woff2) format("woff2"); }
+
+:root {
+  --paper: #EDF1F5;
+  --grid: rgba(27, 42, 65, 0.055);
+  --surface: #FAFBFD;
+  --ink: #1B2A41;
+  --muted: #56667D;
+  --rule: #C7D1DD;
+  --cobalt: #2F5DDE;
+  --cobalt-soft: #DCE5FB;
+  --amber: #FFE08A;
+  --ok: #2E7D4F;
+  --bad: #B3362C;
+  --sans: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --mono: "IBM Plex Mono", Consolas, "Courier New", monospace;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { margin: 0; height: 100%; }
+body {
+  font-family: var(--sans); color: var(--ink); background: var(--paper);
+  font-size: 15px; line-height: 1.5;
+}
+button, input { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--cobalt); outline-offset: 2px; }
+
+.top {
+  display: flex; align-items: baseline; gap: 18px; flex-wrap: wrap;
+  padding: 16px 28px 14px; border-bottom: 1px solid var(--rule); background: var(--surface);
+}
+.top h1 { margin: 0; font-size: 21px; font-weight: 600; letter-spacing: -0.01em; }
+.top p { margin: 0; color: var(--muted); font-size: 14px; }
+.pipeline-line { font-family: var(--mono); font-size: 13px; color: var(--muted); margin-left: auto; }
+
+.layout {
+  display: grid; grid-template-columns: 290px minmax(0, 1fr) 330px;
+  min-height: calc(100vh - 62px);
+}
+.left, .right { background: var(--surface); padding: 22px 22px 28px; max-height: calc(100vh - 62px); overflow-y: auto; }
+.left { border-right: 1px solid var(--rule); }
+.right { border-left: 1px solid var(--rule); }
+
+label { display: block; font-size: 13px; font-weight: 500; color: var(--muted); margin: 0 0 5px; }
+.regex-input {
+  width: 100%; font-family: var(--mono); font-size: 19px; padding: 10px 12px;
+  border: 1.5px solid var(--ink); border-radius: 6px; background: #fff;
+}
+.small-input { width: 100%; padding: 7px 10px; border: 1px solid var(--rule); border-radius: 6px; background: #fff; }
+.field { margin-bottom: 14px; }
+.primary {
+  width: 100%; padding: 10px 14px; border: 0; border-radius: 6px; cursor: pointer;
+  background: var(--ink); color: #fff; font-weight: 600;
+}
+.primary:hover { background: #24375a; }
+.error { color: var(--bad); font-size: 14px; min-height: 1.2em; margin: 8px 0 0; }
+
+h2.side-title { font-size: 15px; font-weight: 600; margin: 22px 0 8px; }
+.examples { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip {
+  font-family: var(--mono); font-size: 13px; padding: 4px 9px; border-radius: 999px;
+  border: 1px solid var(--rule); background: #fff; cursor: pointer;
+}
+.chip:hover { border-color: var(--cobalt); color: var(--cobalt); }
+
+.stages { list-style: none; padding: 0; margin: 0; counter-reset: stage; }
+.stages li { margin: 0; }
+.stage-btn {
+  display: grid; grid-template-columns: 30px 1fr; align-items: center; gap: 0 10px; width: 100%;
+  text-align: left; padding: 9px 8px; border: 0; background: none; cursor: pointer; border-radius: 6px;
+}
+.stage-btn:hover { background: var(--paper); }
+.stage-btn .num {
+  grid-row: span 2; width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center;
+  border: 1.5px solid var(--ink); font-size: 13px; font-weight: 600;
+}
+.stage-btn .name { font-weight: 500; }
+.stage-btn .stat { font-size: 13px; color: var(--muted); font-family: var(--mono); }
+.stage-btn[aria-current="step"] .num { background: var(--cobalt); border-color: var(--cobalt); color: #fff; }
+.stage-btn[aria-current="step"] .name { color: var(--cobalt); font-weight: 600; }
+.stage-btn:disabled { opacity: 0.45; cursor: default; }
+
+details.help { margin-top: 22px; font-size: 14px; color: var(--muted); }
+details.help summary { cursor: pointer; color: var(--ink); font-weight: 500; }
+details.help code { font-family: var(--mono); color: var(--ink); }
+
+.stage { display: flex; flex-direction: column; min-width: 0; padding: 20px 28px 22px; height: calc(100vh - 62px); }
+.stage-head { display: flex; align-items: flex-end; gap: 16px; flex-wrap: wrap; margin-bottom: 12px; }
+.stage-head h2 { margin: 0; font-size: 22px; font-weight: 600; letter-spacing: -0.01em; }
+.stage-head .formula { font-family: var(--mono); color: var(--muted); font-size: 14px; }
+.algo-switch { margin-left: auto; display: inline-flex; border: 1px solid var(--ink); border-radius: 7px; overflow: hidden; }
+.algo-switch button { border: 0; background: #fff; padding: 6px 14px; cursor: pointer; font-weight: 500; }
+.algo-switch button + button { border-left: 1px solid var(--ink); }
+.algo-switch button[aria-selected="true"] { background: var(--ink); color: #fff; }
+
+.canvas {
+  flex: 1 1 0; min-height: 260px; border: 1px solid var(--rule); border-radius: 8px; overflow: auto;
+  display: grid; place-items: center; padding: 18px;
+  background-color: #F7F9FB;
+  background-image:
+    linear-gradient(var(--grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+  background-size: 22px 22px;
+}
+.canvas svg { max-width: 100%; height: auto; }
+.canvas .empty { color: var(--muted); text-align: center; max-width: 46ch; }
+
+.player { display: flex; align-items: center; gap: 6px; margin-top: 12px; }
+.player button {
+  width: 38px; height: 34px; border: 1px solid var(--rule); background: var(--surface); border-radius: 6px; cursor: pointer;
+  display: grid; place-items: center;
+}
+.player button:hover:not(:disabled) { border-color: var(--cobalt); }
+.player button:disabled { opacity: 0.4; cursor: default; }
+.player .play { width: 76px; font-weight: 600; background: var(--ink); color: #fff; border-color: var(--ink); }
+.player .count { margin-left: 10px; font-family: var(--mono); font-size: 14px; color: var(--muted); }
+.player input[type=range] { flex: 1; max-width: 260px; margin-left: 8px; accent-color: var(--cobalt); }
+.caption {
+  margin: 12px 0 0; padding: 12px 14px; border-left: 3px solid var(--cobalt); background: var(--surface);
+  border-radius: 0 6px 6px 0; min-height: 3.2em; max-width: 80ch;
+}
+.caption .m { font-family: var(--mono); }
+
+.right h3 { font-size: 15px; font-weight: 600; margin: 0 0 10px; }
+.right h3:not(:first-child) { margin-top: 24px; }
+.right p { margin: 0 0 10px; font-size: 14px; color: var(--muted); }
+table.data { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+table.data th { text-align: left; font-weight: 500; color: var(--muted); border-bottom: 1px solid var(--ink); padding: 4px 6px; }
+table.data td { border-bottom: 1px solid var(--rule); padding: 5px 6px; vertical-align: top; }
+table.data td.m, table.data .m { font-family: var(--mono); }
+table.data tr.current td { background: var(--amber); }
+table.data tr.fresh td:first-child { box-shadow: inset 3px 0 0 var(--cobalt); }
+.blocks { list-style: none; padding: 0; margin: 0; display: grid; gap: 6px; }
+.blocks li { display: flex; align-items: center; gap: 9px; font-family: var(--mono); font-size: 14px; }
+.swatch { width: 18px; height: 18px; border-radius: 50%; border: 1px solid rgba(27,42,65,.45); flex: none; }
+.stage-list { list-style: none; padding: 0; margin: 0; }
+.stage-list li { padding: 7px 8px; border-radius: 6px; font-size: 14px; display: flex; justify-content: space-between; gap: 8px; }
+.stage-list li.on { background: var(--cobalt-soft); }
+.stage-list .m { font-family: var(--mono); }
+.bar { height: 8px; background: var(--cobalt); border-radius: 4px; margin-top: 4px; min-width: 2px; }
+.verdict { display: flex; gap: 8px; align-items: flex-start; font-size: 14px; padding: 10px 12px; border-radius: 6px; background: #E4F2E9; color: var(--ok); margin-top: 12px; }
+.verdict.bad { background: #F7E3E1; color: var(--bad); }
+.word-row { display: flex; gap: 6px; }
+.word-row input { flex: 1; font-family: var(--mono); }
+.secondary { padding: 7px 12px; border: 1px solid var(--ink); background: #fff; border-radius: 6px; cursor: pointer; font-weight: 500; }
+.result-line { margin-top: 10px; font-size: 14px; }
+.result-line.yes { color: var(--ok); } .result-line.no { color: var(--bad); }
+.ops { font-family: var(--mono); font-size: 12px; color: var(--muted); overflow-wrap: anywhere; }
+table.data tr.sub td { border-bottom: 1px solid var(--rule); padding-top: 0; }
+table.data tr.main td { border-bottom: 0; }
+
+@media (max-width: 1150px) {
+  .layout { grid-template-columns: 270px minmax(0, 1fr); }
+  .right { grid-column: 1 / -1; border-left: 0; border-top: 1px solid var(--rule); max-height: none; }
+  .stage { height: auto; }
+  .canvas { flex: none; min-height: 440px; }
+  .left { max-height: none; }
+}
+@media (max-width: 760px) {
+  .layout { grid-template-columns: 1fr; }
+  .left { border-right: 0; border-bottom: 1px solid var(--rule); }
+  .stage { padding: 18px 14px; }
+  .pipeline-line { margin-left: 0; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .canvas svg { animation: appear .18s ease-out; }
+  @keyframes appear { from { opacity: .55; } to { opacity: 1; } }
+}
+</style>
+</head>
+<body>
+<header class="top">
+  <h1>Vizualizuesi i automateve</h1>
+  <p>Nga shprehja e rregullt te automati minimal, hap pas hapi</p>
+  <span class="pipeline-line">regex → NFA → DFA → DFA minimal</span>
+</header>
+
+<main class="layout">
+  <aside class="left">
+    <form id="form" autocomplete="off">
+      <div class="field">
+        <label for="regex">Shprehja e rregullt</label>
+        <input id="regex" class="regex-input" spellcheck="false" value="(a|ab)(b|ab)*">
+      </div>
+      <div class="field">
+        <label for="alphabet">Alfabeti (opsional)</label>
+        <input id="alphabet" class="small-input" placeholder="p.sh. abc – përndryshe nga shprehja" spellcheck="false">
+      </div>
+      <button class="primary" type="submit">Ndërto automatet</button>
+      <p class="error" id="error" role="alert"></p>
+    </form>
+
+    <h2 class="side-title">Shembuj</h2>
+    <div class="examples" id="examples"></div>
+
+    <h2 class="side-title">Fazat</h2>
+    <ol class="stages" id="stages"></ol>
+
+    <details class="help">
+      <summary>Sintaksa e shprehjeve</summary>
+      <p><code>ab</code> konkatenim, <code>a|b</code> bashkim, <code>a*</code> yll i Kleene-it,
+        <code>a+</code> një ose më shumë, <code>a?</code> opsional, <code>( )</code> grupim,
+        <code>ε</code> ose <code>()</code> vargu bosh, <code>\*</code> karakter i veçantë.</p>
+      <p>Tastiera: ← dhe → kalojnë hapat, hapësira e nis ose e ndal animacionin.</p>
+    </details>
+  </aside>
+
+  <section class="stage" aria-labelledby="stageTitle">
+    <div class="stage-head">
+      <h2 id="stageTitle"></h2>
+      <span class="formula" id="stageFormula"></span>
+      <div class="algo-switch" id="algoSwitch" role="tablist" aria-label="Algoritmi i minimizimit" hidden></div>
+    </div>
+    <div class="canvas" id="canvas" aria-live="polite"><div class="empty">Duke ngarkuar…</div></div>
+    <div class="player" id="player" hidden>
+      <button id="first" aria-label="Hapi i parë">⏮</button>
+      <button id="prev" aria-label="Hapi i mëparshëm">◀</button>
+      <button id="play" class="play">Luaj</button>
+      <button id="next" aria-label="Hapi tjetër">▶</button>
+      <button id="last" aria-label="Hapi i fundit">⏭</button>
+      <input type="range" id="scrub" min="0" max="0" value="0" aria-label="Hapi">
+      <span class="count" id="count"></span>
+    </div>
+    <p class="caption" id="caption"></p>
+  </section>
+
+  <aside class="right" id="side" aria-label="Detajet e hapit"></aside>
+</main>
+
+<script src="vendor/viz.js"></script>
+<script src="vendor/full.render.js"></script>
+<script>
+"use strict";
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const dotq = (s) => String(s).replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+
+const EXAMPLES = [
+  { rx: "(a|ab)(b|ab)*", why: "Minimizimi bashkon dy gjendje (5 → 4)" },
+  { rx: "ab(a|b)*|ba(a|b)*", why: "Minimizimi bashkon gjendje (6 → 5)" },
+  { rx: "(a|b)*abb", why: "Shembulli klasik i literaturës" },
+  { rx: "(a|b)(a|b)a(a|b)*", why: "K₃: Brzozowski rritet në determinizimin e parë" },
+  { rx: "(a|b)*a(a|b)(a|b)", why: "L₃: DFA minimal me 2³ = 8 gjendje" },
+  { rx: "(aa|b)*(a|bb)*", why: "Bashkim i dy ylleve" },
+];
+const STAGES = [
+  { key: "tree", name: "Pema sintaksore" },
+  { key: "nfa", name: "NFA (Thompson)" },
+  { key: "dfa", name: "DFA (nënbashkësitë)" },
+  { key: "min", name: "Minimizimi" },
+  { key: "cmp", name: "Krahasimi" },
+];
+const ALGOS = [["moore", "Moore"], ["hopcroft", "Hopcroft"], ["brzozowski", "Brzozowski"]];
+const PALETTE = ["#F6C85F", "#7DB7E8", "#9BD08B", "#F2A08F", "#BBA8EA", "#7FD6CF", "#F2B5D4", "#D6CE74",
+                 "#A9C6F2", "#EDBB8A", "#C3E39B", "#E7A6C0"];
+
+let data = null, stage = 3, algo = "moore", step = 0, timer = null, wordPath = null;
+
+// ------------------------------------------------------------------ Graphviz rendering
+let viz = new Viz();
+let renderToken = 0;
+async function draw(dot) {
+  const token = ++renderToken;
+  try {
+    const svg = await viz.renderSVGElement(dot);
+    if (token !== renderToken) return;
+    svg.removeAttribute("width"); svg.removeAttribute("height");
+    svg.setAttribute("role", "img");
+    $("canvas").replaceChildren(svg);
+  } catch (e) {
+    viz = new Viz();                       // viz.js must be recreated after an error
+    if (token === renderToken) showEmpty("Vizatimi dështoi: " + e.message);
+  }
+}
+function showEmpty(text) {
+  const div = document.createElement("div");
+  div.className = "empty"; div.textContent = text;
+  $("canvas").replaceChildren(div);
+}
+
+const HEAD = [
+  'bgcolor="transparent"; pad=0.25; nodesep=0.4; ranksep=0.55;',
+  'node [fontname="IBM Plex Mono", fontsize=12, shape=circle, style=filled, fillcolor="#FFFFFF", color="#1B2A41", fontcolor="#1B2A41", penwidth=1.3];',
+  'edge [fontname="IBM Plex Mono", fontsize=12, color="#56667D", fontcolor="#1B2A41", arrowsize=0.75, penwidth=1.1];',
+];
+
+/* aut: {states:[{id,label,final}], start, edges:[{from,to,label}]}
+   o: {showLabels, fill:{id:color}, focus:id, fresh:id, hot:Set(ids), edge:{from,to}, visible:Set, visibleEdges:[] } */
+function automatonDot(aut, o = {}) {
+  const lines = ["digraph G {", "rankdir=LR;", ...HEAD,
+                 '__start [shape=point, width=0.09, label="", color="#1B2A41", fillcolor="#1B2A41"];'];
+  const vis = o.visible || null;
+  for (const s of aut.states) {
+    if (vis && !vis.has(s.id)) continue;
+    let label = s.id;
+    if (o.showLabels && s.label) label = s.id + "\n" + s.label;
+    const attrs = [`label="${dotq(label)}"`];
+    if (s.final) attrs.push("shape=doublecircle");
+    if (o.fill && o.fill[s.id]) attrs.push(`fillcolor="${o.fill[s.id]}"`);
+    if (o.focus === s.id) attrs.push('fillcolor="#FFE08A"');
+    if (o.hot && o.hot.has(s.id)) attrs.push('fillcolor="#FFE08A"');
+    if (o.fresh === s.id || (o.ring && o.ring.has(s.id))) attrs.push('color="#2F5DDE", penwidth=2.8');
+    lines.push(`"${dotq(s.id)}" [${attrs.join(", ")}];`);
+  }
+  lines.push(`__start -> "${dotq(aut.start)}";`);
+  const edges = o.visibleEdges || aut.edges;
+  for (const e of edges) {
+    const attrs = [`label="${dotq(e.label)}"`];
+    if (e.label === "ε") attrs.push('style=dashed, color="#8C99AB"');
+    const hotEdge = (o.edge && o.edge.from === e.from && o.edge.to === e.to) ||
+                    (o.hotEdges && o.hotEdges.has(e.from + "→" + e.to));
+    if (hotEdge) attrs.push('color="#2F5DDE", fontcolor="#2F5DDE", penwidth=2.6');
+    lines.push(`"${dotq(e.from)}" -> "${dotq(e.to)}" [${attrs.join(", ")}];`);
+  }
+  lines.push("}");
+  return lines.join("\n");
+}
+
+function treeDot(tree) {
+  const lines = ["digraph T {", "rankdir=TB;", ...HEAD];
+  let n = 0;
+  (function walk(node) {
+    const id = "t" + (n++);
+    const shape = node.kind === "op" ? 'shape=circle, width=0.42, fixedsize=true, fillcolor="#DCE5FB"'
+                                     : 'shape=box, style="rounded,filled", fillcolor="#FFFFFF"';
+    lines.push(`${id} [label="${dotq(node.label)}", ${shape}];`);
+    for (const child of node.children) lines.push(`${id} -> ${walk(child)} [arrowsize=0.6];`);
+    return id;
+  })(tree);
+  lines.push("}");
+  return lines.join("\n");
+}
+
+function tooLarge(aut) {
+  showEmpty(`Ky automat ka ${aut.n_states} gjendje dhe nuk vizatohet qartë (kufiri është 80). ` +
+            "Numrat dhe hapat mbeten të dukshëm në panelin anësor.");
+}
+
+// ------------------------------------------------------------------ helpers for partitions
+function blockColors(blocks, order) {
+  // a block keeps the colour of its earliest state, so colours stay stable while blocks split
+  const rank = Object.fromEntries(order.map((id, i) => [id, i]));
+  const fill = {};
+  for (const block of blocks) {
+    const first = block.reduce((a, b) => (rank[a] <= rank[b] ? a : b));
+    const color = PALETTE[rank[first] % PALETTE.length];
+    for (const s of block) fill[s] = color;
+  }
+  return fill;
+}
+const setText = (members) => "{" + members.join(", ") + "}";
+
+// ------------------------------------------------------------------ step model per stage
+function steps() {
+  if (!data) return 0;
+  if (stage === 3) return data.subset_steps.length + 1;
+  if (stage === 4) {
+    const a = data.algorithms[algo];
+    if (a.error) return 0;
+    return algo === "brzozowski" ? a.stages.length : a.steps.length + 1;
+  }
+  return 0;
+}
+
+function render() {
+  if (!data) return;
+  const total = steps();
+  step = Math.max(0, Math.min(step, Math.max(total - 1, 0)));
+  for (const btn of document.querySelectorAll(".stage-btn")) {
+    btn.toggleAttribute("aria-current", false);
+    if (Number(btn.dataset.stage) === stage) btn.setAttribute("aria-current", "step");
+  }
+  $("algoSwitch").hidden = stage !== 4;
+  for (const b of $("algoSwitch").children) b.setAttribute("aria-selected", String(b.dataset.algo === algo));
+  $("player").hidden = total <= 1;
+  $("scrub").max = Math.max(total - 1, 0); $("scrub").value = step;
+  $("count").textContent = total > 1 ? `hapi ${step + 1} / ${total}` : "";
+  $("first").disabled = $("prev").disabled = step === 0;
+  $("next").disabled = $("last").disabled = step >= total - 1;
+  [renderTree, renderNfa, renderDfa, renderMin, renderCmp][stage - 1]();
+}
+
+function setHead(title, formula) { $("stageTitle").textContent = title; $("stageFormula").textContent = formula || ""; }
+function setCaption(html) { $("caption").innerHTML = html; }
+function setSide(html) { $("side").innerHTML = html; }
+
+// 1 -------------------------------------------------------------
+function renderTree() {
+  setHead("Pema sintaksore", data.parsed);
+  draw(treeDot(data.tree));
+  setCaption("Analizuesi e lexon shprehjen sipas përparësisë së operatorëve: ylli lidhet më fort, pastaj " +
+             "konkatenimi (<span class='m'>·</span>), pastaj bashkimi (<span class='m'>|</span>). " +
+             "Shkurtesat <span class='m'>+</span> dhe <span class='m'>?</span> janë zëvendësuar me operatorët bazë.");
+  setSide(`<h3>Shprehja</h3><p class="m">${esc(data.regex)}</p>
+    <h3>Me kllapa të plota</h3><p class="m">${esc(data.parsed)}</p>
+    <h3>Alfabeti</h3><p class="m">{${esc(data.alphabet.join(", "))}}</p>`);
+}
+
+// 2 -------------------------------------------------------------
+function renderNfa() {
+  const nfa = data.nfa;
+  setHead("NFA me konstruksionin e Thompson-it", "N(r)");
+  if (nfa.drawable) draw(automatonDot(nfa)); else tooLarge(nfa);
+  setCaption("Çdo simbol dhe çdo operator i shprehjes bëhet një fragment me një gjendje fillestare dhe një " +
+             "finale; fragmentet lidhen me tranzicione <span class='m'>ε</span> (vija të ndërprera).");
+  const eps = nfa.edges.filter((e) => e.label === "ε").length;
+  setSide(`<h3>Madhësia</h3>
+    <table class="data"><tr><td>Gjendje</td><td class="m">${nfa.n_states}</td></tr>
+    <tr><td>Tranzicione</td><td class="m">${nfa.n_transitions}</td></tr>
+    <tr><td>Lidhje ε</td><td class="m">${eps}</td></tr></table>
+    <p style="margin-top:10px">Konstruksioni i Thompson-it prodhon më së shumti 2|r| gjendje, pra madhësia rritet linearisht me shprehjen.</p>`);
+}
+
+// 3 -------------------------------------------------------------
+function renderDfa() {
+  const dfa = data.dfa, all = data.subset_steps;
+  setHead("DFA me konstruksionin e nënbashkësive", "D = det(N)");
+  const done = all.slice(0, step);
+  const visible = new Set([dfa.start, ...done.filter((s) => s.new).map((s) => s.to)]);
+  const edgeMap = new Map();
+  for (const s of done) {
+    const k = s.from + "→" + s.to;
+    if (!edgeMap.has(k)) edgeMap.set(k, { from: s.from, to: s.to, symbols: [] });
+    edgeMap.get(k).symbols.push(s.symbol);
+  }
+  const visibleEdges = [...edgeMap.values()].map((e) => ({ from: e.from, to: e.to, label: e.symbols.join(",") }));
+  const cur = step > 0 ? all[step - 1] : null;
+  if (dfa.drawable) {
+    draw(automatonDot(dfa, { showLabels: true, visible, visibleEdges,
+                             focus: cur ? cur.from : null, fresh: cur && cur.new ? cur.to : null,
+                             edge: cur ? { from: cur.from, to: cur.to } : null }));
+  } else tooLarge(dfa);
+
+  if (!cur) setCaption(`Gjendja fillestare <span class="m">${esc(dfa.start)}</span> është mbyllja ε e gjendjes ` +
+                       `fillestare të NFA-së: <span class="m">${esc(dfa.states.find((s) => s.id === dfa.start).label)}</span>.`);
+  else setCaption(`Nga <span class="m">${esc(cur.from)}</span> me simbolin <span class="m">${esc(cur.symbol)}</span>: ` +
+                  `mbyllja ε e pasardhësve është <span class="m">${esc(cur.subset)}</span> → ` +
+                  (cur.new ? `gjendje e <b>re</b> <span class="m">${esc(cur.to)}</span>.`
+                           : `gjendja ekzistuese <span class="m">${esc(cur.to)}</span>.`) +
+                  (cur.subset === "∅" ? " Bashkësia boshe është gjendja grackë." : ""));
+
+  const sym = data.alphabet;
+  const trans = {};
+  for (const s of done) (trans[s.from] ||= {})[s.symbol] = s.to;
+  const rows = dfa.states.filter((s) => visible.has(s.id)).map((s) => {
+    const cls = [cur && cur.from === s.id ? "current" : "", cur && cur.new && cur.to === s.id ? "fresh" : ""].join(" ");
+    return `<tr class="${cls}"><td class="m">${esc(s.id)}${s.id === dfa.start ? " →" : ""}${s.final ? " ◎" : ""}</td>
+      <td class="m">${esc(s.label)}</td>${sym.map((c) => `<td class="m">${esc((trans[s.id] || {})[c] || "")}</td>`).join("")}</tr>`;
+  }).join("");
+  setSide(`<h3>Tabela e nënbashkësive</h3>
+    <table class="data"><tr><th>DFA</th><th>Nënbashkësia e NFA-së</th>${sym.map((c) => `<th class="m">${esc(c)}</th>`).join("")}</tr>${rows}</table>
+    <p style="margin-top:10px">→ gjendja fillestare, ◎ gjendje finale. Çdo gjendje e DFA-së përfaqëson bashkësinë e gjendjeve të rëndësishme të NFA-së.</p>
+    <h3>Përfundimi</h3><p>${dfa.n_states} gjendje dhe ${dfa.n_transitions} tranzicione.</p>`);
+}
+
+// 4 -------------------------------------------------------------
+function renderMin() {
+  const a = data.algorithms[algo];
+  if (a.error) { setHead("Minimizimi", ""); showEmpty(a.error); setCaption(a.error); setSide(""); return; }
+  if (algo === "brzozowski") return renderBrzozowski(a);
+
+  const dfa = data.dfa, order = dfa.states.map((s) => s.id).sort((x, y) => x.length - y.length || (x < y ? -1 : 1));
+  const name = algo === "moore" ? "Algoritmi i Moore-it" : "Algoritmi i Hopcroft-it";
+  setHead(name, algo === "moore" ? "rafinim i ndarjes në raunde" : "lista e ndarësve, gjysma më e vogël");
+  const last = step === a.steps.length;
+
+  if (last) {
+    const m = a.minimal;
+    if (m.drawable) draw(automatonDot(m, { showLabels: true })); else tooLarge(m);
+    setCaption(`Çdo bllok i ndarjes përfundimtare bëhet një gjendje. Automati minimal ka <b>${m.n_states}</b> ` +
+               `gjendje, nga ${dfa.n_states} sa kishte DFA-ja` + (m.n_states < dfa.n_states ? "." : " – DFA-ja ishte tashmë minimal."));
+    setSide(`<h3>Gjendjet e automatit minimal</h3><table class="data"><tr><th>Gjendja</th><th>Bashkon</th></tr>
+      ${m.states.map((s) => `<tr><td class="m">${esc(s.id)}${s.final ? " ◎" : ""}</td><td class="m">${esc(s.label)}</td></tr>`).join("")}</table>
+      ${opsHtml(a.ops)}`);
+    return;
+  }
+
+  const cur = a.steps[step], prev = step > 0 ? a.steps[step - 1] : null;
+  const fill = blockColors(cur.blocks, order);
+  const ring = cur.splitter ? new Set(cur.splitter) : null;
+  if (dfa.drawable) draw(automatonDot(dfa, { fill, ring })); else tooLarge(dfa);
+
+  if (step === 0) {
+    setCaption(algo === "moore"
+      ? "Ndarja fillestare: gjendjet finale dhe jofinale. Ngjyra e njëjtë = i njëjti bllok."
+      : "Ndarja fillestare: gjendjet finale dhe jofinale. Blloku më i vogël hyn si ndarës në listën e punës.");
+  } else if (algo === "moore") {
+    const same = prev && prev.blocks.length === cur.blocks.length;
+    setCaption(same
+      ? `Raundi ${step}: asnjë bllok i ri – ndarja është e qëndrueshme dhe algoritmi ndalet.`
+      : `Raundi ${step}: gjendjet që shkojnë me ndonjë simbol në blloqe të ndryshme ndahen. Tani ka ${cur.blocks.length} blloqe.`);
+  } else {
+    const byOrder = (xs) => [...xs].sort((x, y) => order.indexOf(x) - order.indexOf(y));
+    const whole = byOrder([...cur.split[0], ...cur.split[1]]);
+    setCaption(`Ndarësi (<span class="m">${esc(setText(byOrder(cur.splitter)))}</span>, <span class="m">${esc(cur.symbol)}</span>), ` +
+               `i shënuar me rreth blu. Blloku <span class="m">${esc(setText(whole))}</span> ndahet në ` +
+               `<span class="m">${esc(setText(byOrder(cur.split[1])))}</span>, që me <span class="m">${esc(cur.symbol)}</span> ` +
+               `shkojnë në ndarës, dhe <span class="m">${esc(setText(byOrder(cur.split[0])))}</span>, që nuk shkojnë.`);
+  }
+  setSide(`<h3>Blloqet (${cur.blocks.length})</h3>
+    <ul class="blocks">${cur.blocks.map((b) => `<li><span class="swatch" style="background:${fill[b[0]]}"></span>${esc(setText(b))}</li>`).join("")}</ul>
+    <p style="margin-top:12px">${algo === "moore"
+      ? "Në çdo raund, nënshkrimi i gjendjes është blloku i saj dhe blloqet ku çojnë tranzicionet e saj."
+      : "Vetëm ndarjet shfaqen si hapa; ndarësit që nuk ndajnë asgjë kalohen."}</p>
+    ${opsHtml(a.ops)}`);
+}
+
+function renderBrzozowski(a) {
+  const st = a.stages[step];
+  setHead("Algoritmi i Brzozowski-t", st.formula);
+  if (st.automaton.drawable) draw(automatonDot(st.automaton, { showLabels: step % 2 === 1 }));
+  else tooLarge(st.automaton);
+  const notes = [
+    "Të gjitha tranzicionet ndryshojnë drejtim; gjendja e re S' lidhet me ε me gjendjet që ishin finale.",
+    "Determinizimi i automatit të kthyer jep DFA-në minimale të gjuhës së kthyer (Lema 3.1). Këtu shihet nëse automati rritet.",
+    "Kthimi i dytë e rikthen gjuhën në drejtimin origjinal.",
+    "Determinizimi i dytë jep automatin minimal – pa ndarje gjendjesh dhe pa krahasime.",
+  ];
+  setCaption(`<b>${esc(st.title)}:</b> ${notes[step]} <span class="m">(${st.automaton.n_states} gjendje)</span>`);
+  const input = data.dfa.n_states;
+  setSide(`<h3>Automatet e ndërmjetme</h3>
+    <ul class="stage-list">${a.stages.map((s, i) => `<li class="${i === step ? "on" : ""}"><span>${i + 1}. ${esc(s.title)}</span>
+      <span class="m">${s.automaton.n_states}</span></li>`).join("")}</ul>
+    <p style="margin-top:12px">Hyrja (DFA) ka ${input} gjendje. Determinizimi i parë ka
+      ${a.stages[1].automaton.n_states} gjendje – ${(a.stages[1].automaton.n_states / input).toFixed(2)} herë madhësia e hyrjes.</p>`);
+}
+
+function opsHtml(ops) {
+  const rows = Object.entries(ops).map(([k, v]) => `<tr><td>${esc(k)}</td><td class="m">${esc(Array.isArray(v) ? v.join(", ") : v)}</td></tr>`).join("");
+  return `<h3>Numëruesit e operacioneve</h3><table class="data">${rows}</table>`;
+}
+
+// 5 -------------------------------------------------------------
+function renderCmp() {
+  setHead("Krahasimi i algoritmeve", "e njëjta gjuhë, kosto të ndryshme");
+  const m = data.algorithms.hopcroft.minimal;
+  const hot = wordPath ? new Set(wordPath.states) : null;
+  const hotEdges = wordPath ? new Set(wordPath.edges) : null;
+  if (m.drawable) draw(automatonDot(m, { showLabels: true, hot, hotEdges })); else tooLarge(m);
+  setCaption(wordPath ? wordPath.text
+    : "Të gjitha algoritmet prodhojnë të njëjtin automat minimal (Teorema e Myhill–Nerode); ndryshon vetëm kostoja. " +
+      "Testoni një varg për të parë rrugën e tij nëpër automatin minimal.");
+  const ok = data.comparison.filter((c) => !c.error);
+  const maxT = Math.max(...ok.map((c) => c.time_ms), 1e-9);
+  const rows = data.comparison.map((c) => c.error
+    ? `<tr><td>${esc(c.algorithm)}</td><td colspan="2">${esc(c.error)}</td></tr>`
+    : `<tr class="main"><td>${esc(c.algorithm)}</td><td class="m">${c.states}</td>
+       <td class="m">${c.time_ms.toFixed(3)}<div class="bar" style="width:${Math.max(2, 100 * c.time_ms / maxT)}%"></div></td></tr>
+       <tr class="sub"><td colspan="3" class="ops">${esc(opsShort(c.ops))}</td></tr>`).join("");
+  setSide(`<h3>Rezultatet</h3>
+    <table class="data"><tr><th>Algoritmi</th><th>Gjendje</th><th>Koha (ms)</th></tr>${rows}</table>
+    <div class="verdict ${data.all_equal ? "" : "bad"}">${data.all_equal
+      ? "✓ Të gjitha variantet dhanë të njëjtin automat minimal."
+      : "✗ Rezultatet ndryshojnë – kontrolloni implementimin."}</div>
+    <p style="margin-top:10px">Koha është mediana e 5 ekzekutimeve në këtë kompjuter.</p>
+    <h3>Testo një varg</h3>
+    <form class="word-row" id="wordForm"><input id="word" class="small-input" placeholder="p.sh. abab" aria-label="Vargu">
+      <button class="secondary" type="submit">Testo</button></form>
+    <div id="wordResult"></div>`);
+  $("wordForm").addEventListener("submit", (ev) => { ev.preventDefault(); testWord($("word").value.trim()); });
+  if (wordPath) { $("word").value = wordPath.word; showWordResult(); }
+}
+function opsShort(ops) {
+  return Object.entries(ops).filter(([k]) => k !== "blocks_final")
+    .map(([k, v]) => `${k}=${Array.isArray(v) ? v.join("/") : v}`).join(", ");
+}
+function testWord(word) {
+  const m = data.algorithms.hopcroft.minimal;
+  const delta = {};
+  for (const e of m.edges) for (const c of e.label.split(",")) delta[e.from + "|" + c] = e.to;
+  let s = m.start; const states = [s], edges = [];
+  for (const c of word) {
+    if (!data.alphabet.includes(c)) { wordPath = { word, states: [], edges: [], accepted: false,
+      text: `Simboli <span class="m">${esc(c)}</span> nuk është në alfabet – vargu refuzohet.` }; render(); return; }
+    const t = delta[s + "|" + c];
+    edges.push(s + "→" + t); s = t; states.push(s);
+  }
+  const accepted = m.states.find((x) => x.id === s).final;
+  wordPath = { word, states, edges, accepted,
+    text: `Vargu <span class="m">${esc(word || "ε")}</span> ${accepted ? "<b>pranohet</b>" : "<b>refuzohet</b>"}: ` +
+          `<span class="m">${states.map(esc).join(" → ")}</span>` };
+  render();
+}
+function showWordResult() {
+  $("wordResult").innerHTML = `<p class="result-line ${wordPath.accepted ? "yes" : "no"}">${wordPath.accepted ? "✓ pranohet" : "✗ refuzohet"}</p>`;
+}
+
+// ------------------------------------------------------------------ loading
+async function load(regex, alphabet) {
+  stopPlay();
+  $("error").textContent = "";
+  showEmpty("Duke ndërtuar automatet…");
+  try {
+    const res = await fetch(`/api/run?regex=${encodeURIComponent(regex)}&alphabet=${encodeURIComponent(alphabet || "")}`);
+    const json = await res.json();
+    if (!res.ok) { $("error").textContent = json.error; if (!data) showEmpty(json.error); else render(); return; }
+    data = json; step = 0; wordPath = null;
+    buildStages();
+    render();
+  } catch (e) {
+    $("error").textContent = "Serveri nuk përgjigjet. A është duke punuar app.py?";
+  }
+}
+
+function buildStages() {
+  const stats = [
+    `${countNodes(data.tree)} nyje`,
+    `${data.nfa.n_states} gjendje`,
+    `${data.dfa.n_states} gjendje`,
+    `${data.algorithms.hopcroft.minimal.n_states} gjendje`,
+    data.all_equal ? "rezultat i njëjtë" : "rezultate të ndryshme",
+  ];
+  $("stages").innerHTML = STAGES.map((s, i) => `<li><button class="stage-btn" data-stage="${i + 1}">
+      <span class="num">${i + 1}</span><span class="name">${s.name}</span><span class="stat">${stats[i]}</span></button></li>`).join("");
+  for (const b of document.querySelectorAll(".stage-btn"))
+    b.addEventListener("click", () => { stopPlay(); stage = Number(b.dataset.stage); step = 0; render(); });
+}
+const countNodes = (t) => 1 + t.children.reduce((a, c) => a + countNodes(c), 0);
+
+// ------------------------------------------------------------------ player
+function go(n) { stopPlay(); step = n; render(); }
+function stopPlay() { if (timer) { clearInterval(timer); timer = null; } $("play").textContent = "Luaj"; }
+function togglePlay() {
+  if (timer) return stopPlay();
+  if (step >= steps() - 1) step = 0;
+  $("play").textContent = "Ndalo";
+  render();
+  timer = setInterval(() => { if (step >= steps() - 1) return stopPlay(); step++; render(); }, 1100);
+}
+
+$("first").addEventListener("click", () => go(0));
+$("prev").addEventListener("click", () => go(step - 1));
+$("next").addEventListener("click", () => go(step + 1));
+$("last").addEventListener("click", () => go(steps() - 1));
+$("play").addEventListener("click", togglePlay);
+$("scrub").addEventListener("input", (e) => go(Number(e.target.value)));
+document.addEventListener("keydown", (e) => {
+  if (e.target.closest("input")) return;
+  if (e.key === "ArrowRight") go(Math.min(step + 1, steps() - 1));
+  else if (e.key === "ArrowLeft") go(Math.max(step - 1, 0));
+  else if (e.key === " " && steps() > 1) { e.preventDefault(); togglePlay(); }
+});
+
+$("algoSwitch").innerHTML = ALGOS.map(([k, n]) => `<button role="tab" data-algo="${k}">${n}</button>`).join("");
+for (const b of $("algoSwitch").children)
+  b.addEventListener("click", () => { stopPlay(); algo = b.dataset.algo; step = 0; render(); });
+
+$("examples").innerHTML = EXAMPLES.map((e) => `<button class="chip" title="${esc(e.why)}" data-rx="${esc(e.rx)}">${esc(e.rx)}</button>`).join("");
+for (const c of $("examples").children)
+  c.addEventListener("click", () => { $("regex").value = c.dataset.rx; $("alphabet").value = ""; load(c.dataset.rx, ""); });
+
+$("form").addEventListener("submit", (e) => { e.preventDefault(); load($("regex").value, $("alphabet").value.trim()); });
+
+load($("regex").value, "");
+</script>
+</body>
+</html>
